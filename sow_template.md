@@ -29,21 +29,31 @@
 
 ## 2. Application-Layer Messaging Protocol Blueprint (Sprint 1 Deliverable)
 
+> Full specifications: [`docs/protocol_blueprint.md`](docs/protocol_blueprint.md),
+> [`docs/fsm_specification.md`](docs/fsm_specification.md), and
+> [`docs/ai_prompts.md`](docs/ai_prompts.md).
+
 ### 2.1 Message Transport & Serialization Format
-- **Transport Protocol:** TCP
-- **Serialization Format:** [JSON / Fixed-Header Binary / Delimited Text]
-- **Framing Mechanism:** [e.g., Newline-delimited (`\n`) JSON payloads OR 4-byte big-endian length prefix]
+- **Transport Protocol:** TCP over IPv4, server listening on port `5457`
+- **Serialization Format:** JSON object, UTF-8 encoded
+- **Framing Mechanism:** Newline-delimited (`\n`, `0x0A`) JSON. Each message is one compact JSON object followed by `\n`; max frame size is 4096 bytes. The receiver keeps a per-connection byte buffer across `recv()` calls and extracts one frame per `\n`, handling both coalescing and fragmentation (blueprint §1).
 
 ### 2.2 Message Schema Definitions
 
+Every message uses the same envelope: `msg_type`, `player_id` (`"Player_1"` / `"Player_2"`, `null` before `CONNECT`, `"SERVER"` from the server), `payload`, and `timestamp` (blueprint §2).
+
 #### Message Types:
-1. `CONNECT` (Client -> Server): Request to join the game room.
-2. `LOBBY_WAIT` (Server -> Client): Notification that server is waiting for Player 2.
-3. `GAME_START` (Server -> Clients): Game initiated, assigns roles (e.g. Player X vs Player O).
-4. `MOVE` (Client -> Server): Player action (e.g., cell coordinates or answer choice).
-5. `STATE_UPDATE` (Server -> Clients): Broadcast current game board / state and active player turn.
-6. `GAME_OVER` (Server -> Clients): Victory / Draw notification with final scores.
-7. `ERROR` (Server -> Client): Invalid move or malformed packet error.
+1. `CONNECT` (Client -> Server): Join the game room with a display name.
+2. `LOBBY_WAIT` (Server -> Client): Tell Player 1 they are connected and waiting for Player 2.
+3. `GAME_START` (Server -> Clients): Game begins; assigns roles `Player_1` / `Player_2` by connection order.
+4. `QUESTION` (Server -> Clients): Next question, its point value (100 / 200 / 300 by round), and the 15 s answer window.
+5. `MOVE` (Client -> Server): The player's answer (`A` to `D`) for the current question.
+6. `WAGER_REQUEST` (Server -> Clients): Scores tied after round 3; ask each player for a tiebreaker wager.
+7. `WAGER` (Client -> Server): The player's wager, from 0 to their current score.
+8. `STATE_UPDATE` (Server -> Clients): Reveal the correct answer, both players' answers, and updated scores.
+9. `ERROR` (Server -> Client): Reject a malformed, invalid, or out-of-turn message without ending the game.
+10. `DISCONNECT` (Client -> Server): Player quits on purpose.
+11. `GAME_OVER` (Server -> Clients): Final result (`WIN`, `DRAW`, or `FORFEIT`) and final scores.
 
 #### Example JSON Protocol Schema:
 ```json
@@ -51,17 +61,27 @@
   "msg_type": "MOVE",
   "player_id": "Player_1",
   "payload": {
-    "row": 0,
-    "col": 2
+    "question_id": "R1Q1",
+    "answer": "B"
   },
-  "timestamp": 1727000000
+  "timestamp": 1727000015
 }
+```
+
+On the wire this is sent as a single line terminated by `\n`:
+
+```text
+{"msg_type":"MOVE","player_id":"Player_1","payload":{"question_id":"R1Q1","answer":"B"},"timestamp":1727000015}\n
 ```
 
 ---
 
 ### 2.3 Game State Machine (FSM) Design (Sprint 1 Deliverable)
-- **State Transitions:** Detail state flow: `INIT` -> `WAITING_FOR_PLAYERS` -> `PLAYER_TURN` -> `EVALUATE_MOVE` -> `CHECK_WIN_DRAW` -> `GAME_OVER` -> `CLEANUP`.
+- **State Transitions:** `INIT` -> `WAITING_FOR_PLAYERS` -> `GAME_START` -> (`PLAYER_TURN` -> `EVALUATE_MOVE` -> `CHECK_WIN_DRAW`) x 9 questions -> `GAME_OVER` -> `CLEANUP` -> back to `WAITING_FOR_PLAYERS`. If scores are tied after round 3, `CHECK_WIN_DRAW` -> `WAGER_TURN` -> `PLAYER_TURN` (tiebreaker question) before `GAME_OVER`.
+- **Turn Model:** Both players answer the same question at once. A player's "turn" is the 15 s answer window, timed by the server. A `MOVE` outside that window, or a second answer to the same question, gets `ERROR OUT_OF_TURN`.
+- **Invalid Input:** Malformed, invalid, or out-of-turn messages get an `ERROR` and leave the state unchanged; the server loop never crashes.
+- **Disconnects:** A disconnect (`DISCONNECT`, TCP EOF, RST, or keepalive timeout) during a game ends it as a `FORFEIT` win for the opponent, then `CLEANUP`. A disconnect in the lobby just returns to `WAITING_FOR_PLAYERS`.
+- **Diagram:** Mermaid `stateDiagram-v2` in [`docs/fsm_specification.md`](docs/fsm_specification.md).
 
 ---
 
