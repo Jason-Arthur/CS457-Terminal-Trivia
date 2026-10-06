@@ -22,7 +22,7 @@ A spec change only happens when I decide it, in a separate commit to the spec do
 
 | Tool | Used for |
 |---|---|
-| Claude (Claude Code) | Drafting the Sprint 1 design documents with me, and generating Sprint 3 code from the prompts below. |
+| Claude (Claude Code) | Drafting the Sprint 1 design documents with me, and generating code under the base system prompt below. |
 
 **Disclosure:** Claude helped draft `protocol_blueprint.md` and `fsm_specification.md`. I reviewed
 every section, made the design decisions (port 5457, newline-delimited JSON, simultaneous answer
@@ -103,137 +103,7 @@ OUTPUT
 
 ---
 
-## 4. Task Prompts
-
-Each task prompt is sent after the base system prompt, together with the spec sections it names.
-
-### 4.1 Framing layer (`protocol.py`, part 1)
-
-```text
-Implement the framing layer in protocol.py. Spec: protocol_blueprint.md §1.2 and §1.3.
-
-Write exactly:
-1. MAX_FRAME = 4096
-2. send_msg(sock, msg: dict) -> None
-   - compact json.dumps, UTF-8, append b"\n", sock.sendall().
-3. class FrameReader:
-   - __init__(self, sock): store sock, self.buf = bytearray()
-   - read_messages(self) -> list[bytes] | None
-     * chunk = sock.recv(4096); if chunk == b"": return None (EOF)
-     * extend buffer; extract every complete frame up to b"\n"; remove frame + b"\n"
-     * leave any partial frame in the buffer
-     * if len(buffer) > MAX_FRAME after extraction: raise FrameTooLargeError
-4. class FrameTooLargeError(Exception)
-
-Do not parse JSON in this layer. Do not catch socket exceptions here; callers do (§4.4).
-
-Acceptance tests (write them as unittest cases with a fake socket whose recv() returns
-a scripted list of chunks):
-- Coalescing: the 209-byte chunk from §1.4 (CONNECT + MOVE) returns 2 frames, buffer empty.
-- Fragmentation: the MOVE frame split after 47 bytes returns [] then 1 frame.
-- Split mid second message: chunk 1 = full STATE_UPDATE + '{"msg_type":"QUES',
-  chunk 2 = rest of QUESTION + b"\n" returns 1 frame, then 1 frame.
-- EOF: recv() returns b"" -> read_messages() returns None.
-- 4097 bytes with no b"\n" -> FrameTooLargeError.
-- send_msg output contains exactly one b"\n", at the end, even when a string value
-  contains a newline character.
-```
-
-### 4.2 Message validation and builders (`protocol.py`, part 2)
-
-```text
-Add message parsing, validation, and builders to protocol.py.
-Spec: protocol_blueprint.md §2 and §3.2 to §3.12.
-
-Write:
-1. parse_frame(frame: bytes) -> dict
-   - decode UTF-8, json.loads; raise ProtocolError("MALFORMED_MESSAGE") on any failure.
-   - require exactly the envelope keys and types from §2, else MALFORMED_MESSAGE.
-2. validate_client_message(msg: dict) -> None
-   - msg_type must be CONNECT, MOVE, WAGER or DISCONNECT, else UNKNOWN_MSG_TYPE.
-   - check each payload field's presence and type exactly per its §3 table.
-   - CONNECT.player_name: 1-16 chars of [A-Za-z0-9_-], else INVALID_NAME.
-   - MOVE.answer: normalize to uppercase; must be A-D, else INVALID_ANSWER.
-   - WAGER.amount: must be an int (bool is NOT an int here), else INVALID_WAGER.
-     (Range checking against max_wager belongs to the FSM, not here.)
-3. class ProtocolError(Exception) carrying .code (one of the allowed ERROR codes).
-4. One builder per server message, returning a full envelope with player_id "SERVER"
-   and timestamp int(time.time()):
-   make_lobby_wait, make_game_start, make_question, make_wager_request,
-   make_state_update, make_error, make_game_over.
-   Builder parameters must match the payload fields in §3 by name.
-
-Acceptance tests:
-- Every JSON sample in protocol_blueprint.md §3 round-trips: parse_frame(sample) succeeds,
-  and each server-side sample can be produced by its builder with the same payload.
-- Missing "timestamp" -> MALFORMED_MESSAGE. msg_type "ATTACK" -> UNKNOWN_MSG_TYPE.
-- MOVE answer "e" -> INVALID_ANSWER; answer "b" -> accepted and normalized to "B".
-- CONNECT name "" and name of 17 chars -> INVALID_NAME.
-```
-
-### 4.3 Server state machine (`server.py`)
-
-```text
-Implement the game server in server.py using protocol.py.
-Spec: fsm_specification.md (all sections) and protocol_blueprint.md §4.
-
-Structure:
-- class State(Enum): INIT, WAITING_FOR_PLAYERS, GAME_START, PLAYER_TURN, EVALUATE_MOVE,
-  CHECK_WIN_DRAW, WAGER_TURN, GAME_OVER, CLEANUP. No other states.
-- class GameRoom holding: state, players (role -> socket, name, score, answered,
-  answer, wager), question index, current question, timer.
-- One transition method per transition-table row T1 to T16. Name each with its row,
-  e.g. def t5_record_move(...). Each docstring quotes its row from §3.1.
-- dispatch(role, msg) routes a validated client message based on the CURRENT state
-  using the §3.2 table. Any (state, message) pair not listed as valid sends the ERROR
-  code from that table and leaves the state unchanged. It must never raise out of
-  the receive loop.
-- handle_client_disconnect(role, reason) implements §3.3 exactly:
-  lobby -> remove Player_1, stay WAITING_FOR_PLAYERS (NOT a forfeit);
-  in game -> GAME_OVER FORFEIT, opponent wins, then CLEANUP.
-- The 15 s timer is server-side (threading.Timer or a select timeout). Cancel it on
-  entering EVALUATE_MOVE and on entering GAME_OVER so a late timer can never
-  re-enter EVALUATE_MOVE.
-- Enable TCP keepalive on each client socket with the exact values in §4.4.
-- Scoring: 100 / 200 / 300 by round; tiebreaker +2x wager if correct, -1x if wrong
-  or unanswered.
-- Questions come from questions.json (3 rounds x 3 questions + 1 tiebreaker).
-
-Do not add a scoreboard, chat, spectators, reconnection, or any feature not in the spec.
-
-Acceptance tests (scripted fake clients, one per row):
-- Happy path T1-T9 with scripted answers: final scores and GAME_OVER payload match.
-- Tie after 9 questions goes through WAGER_TURN and TB (T10-T14), including a
-  still-tied DRAW.
-- Every row of fsm_specification.md §3.2 sends the listed ERROR code and the state is
-  unchanged afterwards.
-- Every row of §3.3: lobby disconnect returns to WAITING_FOR_PLAYERS; mid-game EOF and
-  mid-game ConnectionResetError both produce GAME_OVER FORFEIT to the other player.
-- After CLEANUP, two new clients can connect and play a second game.
-```
-
-### 4.4 Client (`client.py`)
-
-```text
-Implement the terminal client in client.py using protocol.py.
-Spec: protocol_blueprint.md §3 and §4.
-
-- Connect to the server host given on the command line (default server.arthur.edu),
-  port 5457. Send CONNECT with the player name.
-- The client is a display and input terminal only. It does not score, does not judge
-  answers, and does not run the authoritative timer (it may show a countdown).
-- On QUESTION: print the question and choices, read A-D from stdin, send MOVE.
-- On WAGER_REQUEST: read an integer 0..max_wager, send WAGER.
-- On STATE_UPDATE / GAME_OVER: print results and scores. Exit after GAME_OVER.
-- On ERROR: print the message; for INVALID_ANSWER / INVALID_WAGER let the user retry.
-- "quit" or Ctrl+C: send DISCONNECT, close the socket, exit cleanly.
-- EOF or any socket exception from §4.4: print "Lost connection to server" and exit
-  with no traceback.
-```
-
----
-
-## 5. Rejection Checklist
+## 4. Rejection Checklist
 
 AI output is rejected and re-prompted (with the failing item quoted) if any of these appear:
 
@@ -252,15 +122,15 @@ AI output is rejected and re-prompted (with the failing item quoted) if any of t
 
 ---
 
-## 6. Verification & Traceability
+## 5. Verification & Traceability
 
-1. **Tests first from the spec.** The acceptance tests in §4 are written from the spec tables
+1. **Tests first from the spec.** Acceptance tests are written from the spec tables
    and wire examples, so passing them shows conformance to *this* protocol, not just "it runs".
 2. **Line-by-line review.** For each generated function, I read its docstring's spec reference
    and check the code against that section before committing.
 3. **Wireshark check (Sprint 5).** Captures on the CML links must show one JSON object per
    line, terminated by `0a`, with only the 11 defined `msg_type` values.
-4. **Prompt log.** Each prompt actually sent during Sprint 3 is appended to the Sprint 3 prompt log below with the date,
+4. **Prompt log.** The prompts sent during each sprint are logged below under that sprint's heading, with the date,
    what was accepted, what was rejected, and why.
 
 ### Sprint 1 design session (2026-10-06)
@@ -274,10 +144,3 @@ the output. Quoted prompts are my words; the notes describe the outcome.
 | 2026-10-06 | My own restatement of the framing and message spec, for review | Corrected | Claude flagged 3 misunderstandings in my summary: `recv(4096)` does not enforce the max frame size (the buffer check does), EOF is disconnect handling rather than an error, and `FRAME_TOO_LARGE` closes the connection. |
 | 2026-10-06 | Review of the proposed defaults (port 5457, 100/200/300 scoring, answer window as the turn) | Accepted | Approved and merged in PR #8. |
 | 2026-10-06 | "can you create the FSM with mermaid?" | Accepted | I confirmed the lobby rule: a disconnect before the game starts returns to waiting, not a forfeit. Approved and merged in PR #9. |
-
-### Sprint 3 prompt log
-
-
-| Date | Prompt (§) | Result | Notes |
-|---|---|---|---|
-| | | | |
