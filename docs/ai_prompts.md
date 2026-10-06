@@ -260,10 +260,23 @@ AI output is rejected and re-prompted (with the failing item quoted) if any of t
    and check the code against that section before committing.
 3. **Wireshark check (Sprint 5).** Captures on the CML links must show one JSON object per
    line, terminated by `0a`, with only the 11 defined `msg_type` values.
-4. **Prompt log.** Each prompt actually sent during Sprint 3 is appended below with the date,
+4. **Prompt log.** Each prompt actually sent during Sprint 3 is appended to the Sprint 3 prompt log below with the date,
    what was accepted, what was rejected, and why.
 
-### Prompt log
+### Sprint 1 design session (2026-10-06)
+
+Summary of the prompts I gave Claude while designing the Sprint 1 documents, and what I did with
+the output. Quoted prompts are my words; the notes describe the outcome.
+
+| Date | Prompt | Result | Notes |
+|---|---|---|---|
+| 2026-10-06 | "Work on Sprint 1, one step at a time" + the Sprint 1 rubric PDF | Blueprint drafted | I set the order (blueprint, then FSM, then AI prompts) and required my approval before anything was pushed. |
+| 2026-10-06 | My own restatement of the framing and message spec, for review | Corrected | Claude flagged 3 misunderstandings in my summary: `recv(4096)` does not enforce the max frame size (the buffer check does), EOF is disconnect handling rather than an error, and `FRAME_TOO_LARGE` closes the connection. |
+| 2026-10-06 | Review of the proposed defaults (port 5457, 100/200/300 scoring, answer window as the turn) | Accepted | Approved and merged in PR #8. |
+| 2026-10-06 | "Create the FSM with Mermaid" | Accepted | I confirmed the lobby rule: a disconnect before the game starts returns to waiting, not a forfeit. Approved and merged in PR #9. |
+
+### Sprint 3 prompt log
+
 
 | Date | Prompt (§) | Result | Notes |
 |---|---|---|---|
