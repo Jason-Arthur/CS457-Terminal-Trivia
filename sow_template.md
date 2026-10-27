@@ -87,13 +87,17 @@ On the wire this is sent as a single line terminated by `\n`:
 
 ## 3. Game Behavior & Server Concurrency Architecture (Sprint 2 Deliverable)
 
+> Full specifications: [`docs/concurrency_design.md`](docs/concurrency_design.md) and
+> [`docs/sequence_diagram.md`](docs/sequence_diagram.md).
+
 ### 3.1 Server Concurrency Strategy
-- **Architecture Choice:** [Multi-Threading (`threading.Thread`) OR Non-blocking I/O multiplexing (`select.select` / `selectors`)]
-- **Synchronization Logic:** Explain how shared game state and client list are thread-safe (e.g. `threading.Lock`) to prevent race conditions during turn processing.
+- **Architecture Choice:** Non-blocking I/O multiplexing with `selectors` (`DefaultSelector`, `epoll` on the Linux CML nodes). One thread runs an event loop over the listening socket and every client socket, all set to `setblocking(False)`. A silent or slow player never blocks the other, and the 15 s answer window is a `time.monotonic()` deadline passed as the `select()` timeout, so no timer thread is needed.
+- **Connection Lifecycle:** bind and `listen()` on port `5457` -> `accept()` and register each client -> `CONNECT` assigns `Player_1` / `Player_2` (a third client gets `ERROR LOBBY_FULL` and is closed) -> the loop services reads, writes and the deadline -> `GAME_OVER` is flushed, sockets are unregistered and closed, and the room resets for the next pair.
+- **Synchronization Logic:** No locks are needed, because only one handler runs at a time and each one runs to completion before the loop takes the next event. That makes every handler an atomic critical section over the shared state (FSM state, client slot table, open answer windows, answers, deadline, question index, scores, wagers, per-connection buffers). The rules that keep this true: no blocking calls or threads in the server, every state change queues its broadcast in the same handler, and sends only append to a per-connection `outbuf` (flushed with `send()` when writable) so a send failure can never interrupt game logic.
 
 ### 3.2 State & Score Synchronization Across Clients
-- **Turn Enforcement:** Detail how the server validates active player ID before processing moves and broadcasts updated turn notifications to all clients.
-- **Score & Board Synchronization:** Describe how state broadcasts keep client screens synchronized in real time.
+- **Turn Enforcement:** Both players answer the same question at once, so a player's "turn" is their own answer window. A `MOVE` is accepted only if the game is in `PLAYER_TURN`, its `question_id` is the current one, that player's window is still open, and the answer is `A` to `D`. Otherwise the sender alone gets `ERROR OUT_OF_TURN` or `INVALID_ANSWER` and the game state is unchanged. The deadline is checked before any frame is processed, so a late `MOVE` is rejected and never counted. A valid `MOVE` gets no reply, so the opponent cannot learn the result early.
+- **Score & Board Synchronization:** Scores live only on the server (`scores` totals plus a per-question `history`). When a question closes (both answered, or the deadline passed), one `close_round()` scores it once, builds one `STATE_UPDATE` with the full score table, and queues the identical bytes to both clients in the same handler, followed by the next `QUESTION`, `WAGER_REQUEST` or `GAME_OVER`. Both clients therefore always show the same scores, in the same order. Mermaid sequence diagram: [`docs/sequence_diagram.md`](docs/sequence_diagram.md).
 
 ---
 
