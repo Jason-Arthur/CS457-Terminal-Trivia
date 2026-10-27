@@ -3,6 +3,9 @@
 **Course:** CS 457 Computer Networks, Sprint 2
 **Author:** Jason Arthur
 
+> **Sequence diagram:** the Mermaid `sequenceDiagram` for this design (move validation, `ERROR`
+> branches, and `STATE_UPDATE` / score broadcasts) is in [`sequence_diagram.md`](sequence_diagram.md).
+
 This document defines how the Terminal Trivia server serves two players at once without blocking,
 how it keeps the shared game state consistent, and how it stores and broadcasts scores. It builds
 on [`protocol_blueprint.md`](protocol_blueprint.md) (framing, the 11 message types, error codes,
