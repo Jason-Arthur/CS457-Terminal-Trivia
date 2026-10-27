@@ -67,7 +67,7 @@ See section 5 of the [SOW](sow_template.md) for the DHCP, DNS and Wireshark plan
 |---|---|---|
 | 0 | Game selection and SOW | Done |
 | 1 | Application protocol and FSM design | Done |
-| 2 | Server concurrency and state synchronization design | Not started |
+| 2 | Server concurrency and state synchronization design | Done |
 | 3 | Implementation (`protocol.py`, `server.py`, `client.py`) | Not started |
 | 4–5 | CML topology deployment and Wireshark captures | Not started |
 
