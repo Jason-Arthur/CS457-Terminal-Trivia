@@ -12,7 +12,7 @@ server's 15-second answer deadline.
 
 ---
 
-## 1. Concurrency Model: Non-Blocking I/O with `selectors`
+## 1. Concurrency Model: Non-Blocking I/O Multiplexing with `selectors`
 
 The server is a **single-threaded event loop** built on Python's `selectors.DefaultSelector`
 (`epoll` on the Linux CML nodes). The listening socket and every client socket are set to
