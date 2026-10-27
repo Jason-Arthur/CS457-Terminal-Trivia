@@ -179,3 +179,5 @@ the output. Quoted prompts are my words; the notes describe the outcome.
 | 2026-10-27 | "this looks good, lets make the issue(s) and open the pr" | Merged | Issues #14 and #15, both closed by PR #16. |
 | 2026-10-27 | "lets update sow and ai prompts" | PR #18 | SOW section 3 filled in. Base prompt and rejection checklist updated for the `selectors` design: the server no longer uses `sendall()` (one change from blueprint §1.2), and threads in the server are now a rejection item. |
 | 2026-10-27 | "can you also add the two new files to the readme \"repository contents\" section. add this last prompt to the ai prompts, and send the pr." | PR #18 | README lists `concurrency_design.md` and `sequence_diagram.md`; this row added to the log. |
+| 2026-10-27 | "review this to ensure all is completed", + the Sprint 2 rubric file | Checked | Every rubric criterion was met on main. Claude noted that `concurrency_design.md` did not link to the diagram. |
+| 2026-10-27 | "add a link to the sequence diagram at the top of the concurrency design file" | PR #20 | Link added under the author line. |
