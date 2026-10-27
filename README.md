@@ -30,6 +30,8 @@ on separate subnets of a multi-router network built in Cisco Modeling Labs (CML)
 | [`sow_template.md`](sow_template.md) | Statement of Work: game scope, protocol summary, and plans for every sprint. |
 | [`docs/protocol_blueprint.md`](docs/protocol_blueprint.md) | Application protocol: TCP framing, the message envelope, all 11 message schemas, error codes, and the socket lifecycle. |
 | [`docs/fsm_specification.md`](docs/fsm_specification.md) | Server game state machine: a Mermaid diagram plus state, transition, error and disconnect tables. |
+| [`docs/concurrency_design.md`](docs/concurrency_design.md) | Server concurrency architecture: the single-threaded `selectors` event loop, connection lifecycle, state isolation, and score storage and broadcast. |
+| [`docs/sequence_diagram.md`](docs/sequence_diagram.md) | Mermaid sequence diagram and narrative for a full game: joining, move validation, `ERROR` branches, `STATE_UPDATE` broadcasts, tiebreaker, and game over. |
 | [`docs/ai_prompts.md`](docs/ai_prompts.md) | AI usage policy, constraint strategy, base system prompt, and a per-sprint prompt log. |
 
 ---
