@@ -1,6 +1,6 @@
 # Terminal Trivia: AI Prompting & Constraint Strategy
 
-**Course:** CS 457 Computer Networks, Sprint 1
+**Course:** CS 457 Computer Networks, Sprint 1 (updated Sprint 2)
 **Author:** Jason Arthur
 
 This document records how AI coding assistants are used on this project and, more importantly,
@@ -11,6 +11,10 @@ The two spec documents are the source of truth:
   error codes, socket lifecycle.
 - [`fsm_specification.md`](fsm_specification.md): server states, transitions T1 to T16, invalid
   input handling, disconnect handling.
+- [`concurrency_design.md`](concurrency_design.md) (Sprint 2): single-threaded `selectors` event
+  loop, connection lifecycle, state isolation rules, score storage and broadcast.
+- [`sequence_diagram.md`](sequence_diagram.md) (Sprint 2): message flow for a full game, including
+  every `ERROR` branch.
 
 If the AI produces anything that is not in those documents (a new message type, a different
 framing rule, a renamed field, a state that doesn't exist), the output is rejected, not the spec.
@@ -22,12 +26,16 @@ A spec change only happens when I decide it, in a separate commit to the spec do
 
 | Tool | Used for |
 |---|---|
-| Claude (Claude Code) | Drafting the Sprint 1 design documents with me, and generating code under the base system prompt below. |
+| Claude (Claude Code) | Drafting the Sprint 1 and Sprint 2 design documents with me, and generating code under the base system prompt below. |
 
 **Disclosure:** Claude helped draft `protocol_blueprint.md` and `fsm_specification.md`. I reviewed
 every section, made the design decisions (port 5457, newline-delimited JSON, simultaneous answer
 window as the "turn", 100/200/300 scoring, lobby disconnects returning to waiting), and approved
 each document in its PR before merging (PR #8 and PR #9).
+
+In Sprint 2 Claude helped draft `concurrency_design.md` and `sequence_diagram.md`. I chose the
+concurrency model (`selectors` I/O multiplexing over a thread per client), reviewed both documents,
+and merged them in PR #16.
 
 ---
 
@@ -60,8 +68,8 @@ You are implementing the networking code for "Terminal Trivia", a 2-player TCP t
 game for a CS 457 Computer Networks course. You are an implementer, not a designer.
 
 SOURCE OF TRUTH
-- docs/protocol_blueprint.md and docs/fsm_specification.md (provided below) are the
-  complete and binding specification. Implement exactly what they say.
+- docs/protocol_blueprint.md, docs/fsm_specification.md and docs/concurrency_design.md
+  (provided below) are the complete and binding specification. Implement exactly what they say.
 - If something you need is not specified, STOP and ask. Do not invent behavior.
 - Never add, rename, or remove a message type, payload field, error code, or FSM state.
 
@@ -71,7 +79,10 @@ HARD CONSTRAINTS
   with no internet access.
 - Transport: TCP over IPv4. Server listens on 0.0.0.0:5457.
 - Framing: newline-delimited JSON exactly as in protocol_blueprint.md §1.
-  * Send: json.dumps(msg, separators=(",", ":")).encode("utf-8") + b"\n", via sendall().
+  * Encode: json.dumps(msg, separators=(",", ":")).encode("utf-8") + b"\n".
+  * Client sends with sendall(). The server never calls sendall(): it appends the frame
+    to that connection's outbuf and flushes with send() when the socket is writable
+    (concurrency_design.md §2.5).
   * Receive: one persistent bytearray buffer per socket; recv(4096); split on b"\n";
     keep the trailing partial frame; >4096 bytes buffered without b"\n" = FRAME_TOO_LARGE.
   * NEVER assume one recv() == one message.
@@ -84,7 +95,12 @@ HARD CONSTRAINTS
   INVALID_ANSWER, OUT_OF_TURN, INVALID_WAGER, ID_MISMATCH, FRAME_TOO_LARGE
 - recv() returning b"" is EOF: stop reading that socket and run disconnect handling.
   Never loop on recv() after EOF.
-- Every recv() and sendall() is wrapped in
+- Server concurrency: ONE thread running a selectors.DefaultSelector loop over
+  non-blocking sockets (concurrency_design.md §1, §2.5). No threading, no
+  threading.Timer, no sleep() or other blocking call inside a handler. The 15 s answer
+  window is a time.monotonic() deadline used as the select() timeout, checked before
+  any frame is dispatched (§3.4).
+- Every recv(), send() and sendall() is wrapped in
   except (ConnectionResetError, BrokenPipeError, ConnectionAbortedError, TimeoutError).
   No bare "except:" and no "except Exception: pass".
 - The server is authoritative: scoring, the 15 s answer timer, and turn enforcement
@@ -110,7 +126,11 @@ AI output is rejected and re-prompted (with the failing item quoted) if any of t
 | Red flag | Why it violates the spec |
 |---|---|
 | `data = sock.recv(1024)` followed directly by `json.loads(data)` | Assumes one `recv()` is one message; ignores §1.1 coalescing and fragmentation. |
-| `sock.send(...)` instead of `sendall` | Can write a partial frame (§1.2). |
+| Client: `sock.send(...)` instead of `sendall` | Can write a partial frame (§1.2). |
+| Server: `sendall()` on a non-blocking socket, or `send()` without keeping the unsent rest in `outbuf` | Raises `BlockingIOError` part-way or drops bytes (concurrency_design.md §2.5). |
+| `threading`, `threading.Timer`, or `socketserver.ThreadingTCPServer` in the server | The design is a single-threaded `selectors` loop; threads reintroduce the races in concurrency_design.md §3.2. |
+| `time.sleep()`, blocking `recv()`, or `input()` inside a server handler | Stalls the event loop for both players (concurrency_design.md §3.1). |
+| Scoring a question anywhere other than `close_round()` | Risks scoring a question twice (concurrency_design.md §3.3). |
 | A `msg_type` or error code not in the closed lists | Breaks the protocol contract (§3, §3.10). |
 | `json.dumps(..., indent=...)` on the wire | Multi-line JSON would break newline framing. |
 | A receive loop with no `if not data` / `None` check | Spins forever at 100% CPU after EOF (§4.3). |
@@ -144,3 +164,17 @@ the output. Quoted prompts are my words; the notes describe the outcome.
 | 2026-10-06 | My own restatement of the framing and message spec, for review | Corrected | Claude flagged 3 misunderstandings in my summary: `recv(4096)` does not enforce the max frame size (the buffer check does), EOF is disconnect handling rather than an error, and `FRAME_TOO_LARGE` closes the connection. |
 | 2026-10-06 | Review of the proposed defaults (port 5457, 100/200/300 scoring, answer window as the turn) | Accepted | Approved and merged in PR #8. |
 | 2026-10-06 | "can you create the FSM with mermaid?" | Accepted | I confirmed the lobby rule: a disconnect before the game starts returns to waiting, not a forfeit. Approved and merged in PR #9. |
+
+### Sprint 2 design session (2026-10-27)
+
+Summary of the prompts I gave Claude while designing the Sprint 2 documents, and what I did with
+the output. Quoted prompts are my words; the notes describe the outcome.
+
+| Date | Prompt | Result | Notes |
+|---|---|---|---|
+| 2026-10-27 | "time to work on sprint two, just layout what you read here first", + the Sprint 2 assignment and rubric | Breakdown only | Claude mapped the 150 rubric points to two files and flagged where the rubric's tic-tac-toe framing (one active player, a reply to every move) differs from our simultaneous answer windows. |
+| 2026-10-27 | "the real due date is 31, ignore the 18. lets go selectors." | Model chosen | I picked `selectors` over a thread per client, because the 15 s window becomes the `select()` timeout and removes the MOVE-vs-timer race. |
+| 2026-10-27 | Review comment on the section 1 heading: "add multiplexing here" | Accepted | Heading now names the model as non-blocking I/O multiplexing, matching the rubric's wording. |
+| 2026-10-27 | "-> use mermaid syntax for this" (on assignment section 2.2) and "use this reference for the sequence diagram: https://mermaid.js.org/syntax/sequenceDiagram.html" | Accepted | Diagram uses only syntax from that page, covers all 11 message types, and was rendered with Mermaid 11 before pushing to check for syntax errors. |
+| 2026-10-27 | "this looks good, lets make the issue(s) and open the pr" | Merged | Issues #14 and #15, both closed by PR #16. |
+| 2026-10-27 | "lets update sow and ai prompts" | This update | SOW section 3 filled in. Base prompt and rejection checklist updated for the `selectors` design: the server no longer uses `sendall()` (one change from blueprint §1.2), and threads in the server are now a rejection item. |
