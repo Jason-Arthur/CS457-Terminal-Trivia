@@ -37,7 +37,7 @@ on separate subnets of a multi-router network built in Cisco Modeling Labs (CML)
 | [`client.py`](client.py) | The player program: connects to the server by hostname and shows questions, turn status and scores. |
 | [`protocol.py`](protocol.py) | Shared protocol code: message framing, the envelope, message types and error codes. |
 | [`questions.json`](questions.json) | The question bank: 3 rounds of 3 questions plus 1 tiebreaker. |
-| [`tests/`](tests/) | Automated tests built from the protocol and FSM specs, plus command-line checks (22 tests). |
+| [`tests/`](tests/) | Automated tests built from the protocol and FSM specs, plus command-line checks (24 tests). |
 | [`docs/sprint3_execution_log.md`](docs/sprint3_execution_log.md) | Console log of a full two-player game on localhost (Sprint 3). |
 
 ---
@@ -235,7 +235,7 @@ From the project folder:
 python3 -m unittest discover -s tests
 ```
 
-The tests take about two seconds and should end with `Ran 22 tests ... OK`. They check the
+The tests take about two seconds and should end with `Ran 24 tests ... OK`. They check the
 message framing examples from the protocol blueprint, every error code, and full game behavior
 (joining, answering, scoring, forfeits) against a real server on your computer.
 

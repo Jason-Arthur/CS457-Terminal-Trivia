@@ -8,6 +8,7 @@ Run from the repository root:  python3 -m unittest discover -s tests
 
 import json
 import os
+import signal
 import socket
 import subprocess
 import sys
@@ -168,6 +169,28 @@ class ServerTests(unittest.TestCase):
         time.sleep(0.2)
         b = self.join("Bob")
         self.assertEqual(b.recv()["payload"]["assigned_id"], p.PLAYER_1)
+
+    def test_second_connect_is_out_of_turn(self):
+        """FSM §3.2: a joined player re-sending CONNECT gets OUT_OF_TURN."""
+        a = self.join("Alice")
+        a.recv()
+        a.role = p.PLAYER_1
+        a.send(p.CONNECT, {"player_name": "Alice2"}, None)
+        self.assertEqual(a.recv()["payload"]["code"], p.OUT_OF_TURN)
+        b = self.join("Bob")
+        self.assertEqual(b.recv()["payload"]["your_id"], p.PLAYER_2)
+
+    def test_server_shutdown_mid_game(self):
+        """FSM §3.3: Ctrl+C mid-game sends DRAW / server_shutdown to both."""
+        a, b = self.start_game()
+        self.proc.send_signal(signal.SIGINT)
+        for pl in (a, b):
+            over = pl.recv()
+            self.assertEqual(over["msg_type"], p.GAME_OVER)
+            self.assertEqual(over["payload"]["result"], "DRAW")
+            self.assertIsNone(over["payload"]["winner"])
+            self.assertEqual(over["payload"]["reason"], "server_shutdown")
+            self.assertIsNone(pl.recv())
 
 
 if __name__ == "__main__":
