@@ -103,9 +103,9 @@ On the wire this is sent as a single line terminated by `\n`:
 
 ## 4. Coding & AI Implementation Plan (Sprint 3)
 
-- **Permitted AI Tools:** [e.g., GitHub Copilot, ChatGPT, Claude]
-- **AI Prompting & Constraint Strategy:** Explain how you will constrain AI models to generate code (in Python or your chosen language) that adheres strictly to the protocol blueprint and FSM designed in Sprints 1 & 2.
-- **Implementation Risk Management:** Detail your plan to leverage past programming experience and manage time to ensure code completion on schedule.
+- **Permitted AI Tools:** Claude (Claude Code), used under the base system prompt and rejection checklist in [`docs/ai_prompts.md`](docs/ai_prompts.md). Every prompt and decision for Sprint 3 is logged there.
+- **AI Prompting & Constraint Strategy:** The three spec documents ([`protocol_blueprint.md`](docs/protocol_blueprint.md), [`fsm_specification.md`](docs/fsm_specification.md), [`concurrency_design.md`](docs/concurrency_design.md)) are the binding source of truth. The AI implements them and does not design. Where the specs were silent (the client's input loop, how the player name is entered, the port flag, the question bank), it stopped and asked, and I made each call before any code depended on it. Every function's docstring names the spec section it implements, the code uses the closed lists of 11 message types, 10 error codes and 9 FSM states, and the code is Python 3 standard library only, because the CML nodes are offline.
+- **Implementation Risk Management:** The code is split into small modules, built in order: `protocol.py` (framing and validation), then `server.py` (the `selectors` loop and FSM), then `client.py` (CLI, DNS handling, terminal UI). Each was tested before the next was started. 22 automated tests in `tests/` are taken directly from the spec's wire examples, error and transition tables, and the `-p` port rules. The code was also run on Alpine Linux (the CML node OS) and as a full two-client game on localhost ([`docs/sprint3_execution_log.md`](docs/sprint3_execution_log.md)) before submission.
 
 ---
 
