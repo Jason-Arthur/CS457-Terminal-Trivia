@@ -50,6 +50,7 @@ stateDiagram-v2
 
     CHECK_WIN_DRAW --> GAME_OVER : 9 done and scores differ / WIN most_points<br/>tiebreaker scored / WIN tiebreaker or DRAW
     IN_GAME --> GAME_OVER : any player DISCONNECT, EOF, RST or keepalive timeout<br/>FORFEIT, opponent wins
+    IN_GAME --> GAME_OVER : server Ctrl+C<br/>DRAW, server_shutdown
 
     GAME_OVER --> CLEANUP : send GAME_OVER to remaining player(s)
     CLEANUP --> WAITING_FOR_PLAYERS : close sockets, reset scores,<br/>question index and buffers
@@ -123,6 +124,7 @@ the offending client only, discards the message, and keeps going.
 | `WAGER_TURN` | `WAGER` amount < 0, > score, or not an integer | `ERROR INVALID_WAGER`; window stays open |
 | `WAGER_TURN` | `MOVE`, or a second `WAGER` | `ERROR OUT_OF_TURN` |
 | any after `GAME_START` | a new client sends `CONNECT` | `ERROR LOBBY_FULL`, close that new socket only |
+| any | a player who has already joined sends `CONNECT` again | `ERROR OUT_OF_TURN`; role and name unchanged |
 | any | more than 4096 bytes buffered without `\n` | `ERROR FRAME_TOO_LARGE`, then treat as a disconnect of that player |
 
 ### 3.3 Disconnects
@@ -137,6 +139,7 @@ keepalive. All of them call the same `handle_client_disconnect(player)`.
 | Any state inside `IN_GAME`, one player drops | `GAME_OVER` with `result: FORFEIT`, `winner` = the remaining player, `reason: opponent_quit` (for `DISCONNECT`) or `opponent_disconnected` (for EOF / exceptions). Then `CLEANUP`. |
 | Inside `IN_GAME`, both players drop | `GAME_OVER` is attempted; both sends fail and are caught. Then `CLEANUP`. |
 | `GAME_OVER` or `CLEANUP` | Ignored; the sockets are being closed anyway. |
+| Inside `IN_GAME`, the server is stopped (Ctrl+C) | `GAME_OVER` with `result: DRAW`, `winner: null`, `reason: server_shutdown` and the scores so far, one last flush attempt, then the server exits. In `WAITING_FOR_PLAYERS` the sockets are just closed. |
 
 A pending 15 s timer is cancelled on entry to `GAME_OVER`, so a timer that fires late can never
 move a finished game back into `EVALUATE_MOVE`.

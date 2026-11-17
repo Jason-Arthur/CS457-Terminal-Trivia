@@ -394,7 +394,7 @@ server keeps its receive loop running unless the code says the connection is clo
 | `LOBBY_FULL` | A third client connects while two are already in the room. | Closed by server |
 | `NOT_JOINED` | Any message other than `CONNECT` before `CONNECT` succeeded. | Kept open |
 | `INVALID_ANSWER` | `MOVE.answer` is not `A` to `D`. | Kept open; window stays open for a corrected `MOVE` |
-| `OUT_OF_TURN` | `MOVE` with no window open, after this player already answered, or with a stale `question_id`; or `WAGER` when no wager was requested. | Kept open; message ignored |
+| `OUT_OF_TURN` | `MOVE` with no window open, after this player already answered, or with a stale `question_id`; `WAGER` when no wager was requested; or `CONNECT` from a player who has already joined. | Kept open; message ignored |
 | `INVALID_WAGER` | `WAGER.amount` is negative, not an integer, or above `max_wager`. | Kept open; client may resend |
 | `ID_MISMATCH` | `player_id` does not match the role assigned to this socket. | Kept open; message ignored |
 | `FRAME_TOO_LARGE` | More than 4096 bytes buffered without a `\n`. | Closed by server |
@@ -433,11 +433,15 @@ Graceful, intentional quit. The client sends this, then closes its socket.
 
 The last message of a game. After sending it the server closes both connections.
 
+If the server operator stops the server (Ctrl+C) while a game is running, the server sends
+`GAME_OVER` with `result: "DRAW"`, `winner: null`, `reason: "server_shutdown"` and the scores so
+far, makes one last attempt to deliver it, and exits. No one wins a game the server ended.
+
 | Payload field | Type | Description |
 |---|---|---|
 | `result` | string | `"WIN"`, `"DRAW"`, or `"FORFEIT"`. |
 | `winner` | string or null | Winning role; `null` on a draw. |
-| `reason` | string | `"most_points"`, `"tiebreaker"`, `"tied_after_tiebreaker"`, `"opponent_quit"`, or `"opponent_disconnected"`. |
+| `reason` | string | `"most_points"`, `"tiebreaker"`, `"tied_after_tiebreaker"`, `"opponent_quit"`, `"opponent_disconnected"`, or `"server_shutdown"`. |
 | `final_scores` | object | Map of role to final score. |
 
 ```json

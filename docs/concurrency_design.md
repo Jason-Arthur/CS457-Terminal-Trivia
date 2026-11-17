@@ -108,6 +108,7 @@ A connection with `role = None` is unregistered at the game level. The only mess
 | `WAITING_FOR_PLAYERS`, `Player_1` waiting | Validate name. Set `role = "Player_2"`. In the same handler: queue `GAME_START` to each player (each with its own `your_id`), queue `QUESTION` R1Q1 to both, open both windows, set `deadline = now + 15`. FSM moves to `PLAYER_TURN`. |
 | Any `IN_GAME` state, `GAME_OVER` or `CLEANUP` | Queue `ERROR LOBBY_FULL`, set `close_after_flush`. This connection never touches the `Room`. |
 | Any, name invalid | Queue `ERROR INVALID_NAME`; the client may retry. |
+| Any, this connection already has a role | Queue `ERROR OUT_OF_TURN`; role and name stay as they are. |
 
 **Capacity planning.** The room holds exactly two players. Connections beyond that are short-lived:
 they are accepted, sent `LOBBY_FULL`, and closed as soon as the error is flushed. `listen(5)` lets
@@ -187,8 +188,9 @@ Teardown has two triggers: the game ending normally (`T9`, `T13`, `T14` in the F
 
 A lobby disconnect (only `Player_1` present) skips steps 1 and 2: the socket is closed and the room
 goes straight back to waiting with no forfeit. Server shutdown (Ctrl+C) is caught around the loop:
-the server queues `GAME_OVER` if a game is running, makes one last flush attempt, closes every
-registered socket and the listening socket, and then `selector.close()`.
+the server queues `GAME_OVER` (`DRAW`, `winner: null`, `reason: server_shutdown`) if a game is
+running, makes one last flush attempt, closes every registered socket and the listening socket, and
+then `selector.close()`.
 
 ---
 
