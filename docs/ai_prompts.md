@@ -1,6 +1,6 @@
 # Terminal Trivia: AI Prompting & Constraint Strategy
 
-**Course:** CS 457 Computer Networks, Sprint 1 (updated Sprint 2)
+**Course:** CS 457 Computer Networks, Sprint 1 (updated Sprints 2 and 3)
 **Author:** Jason Arthur
 
 This document records how AI coding assistants are used on this project and, more importantly,
@@ -26,7 +26,7 @@ A spec change only happens when I decide it, in a separate commit to the spec do
 
 | Tool | Used for |
 |---|---|
-| Claude (Claude Code) | Drafting the Sprint 1 and Sprint 2 design documents with me, and generating code under the base system prompt below. |
+| Claude (Claude Code) | Drafting the Sprint 1 and Sprint 2 design documents with me, and generating the Sprint 3 code under the base system prompt below. |
 
 **Disclosure:** Claude helped draft `protocol_blueprint.md` and `fsm_specification.md`. I reviewed
 every section, made the design decisions (port 5457, newline-delimited JSON, simultaneous answer
@@ -36,6 +36,11 @@ each document in its PR before merging (PR #8 and PR #9).
 In Sprint 2 Claude helped draft `concurrency_design.md` and `sequence_diagram.md`. I chose the
 concurrency model (`selectors` I/O multiplexing over a thread per client), reviewed both documents,
 and merged them in PR #16.
+
+In Sprint 3 Claude generated `protocol.py`, `server.py`, `client.py`, `questions.json` and the
+tests in `tests/` from the three spec documents. Where the specs did not decide something, Claude
+asked first, and I made each of those design choices (listed in the Sprint 3 log below). I
+reviewed the code and test results before it was pushed.
 
 ---
 
@@ -181,3 +186,33 @@ the output. Quoted prompts are my words; the notes describe the outcome.
 | 2026-10-27 | "can you also add the two new files to the readme \"repository contents\" section. add this last prompt to the ai prompts, and send the pr." | PR #18 | README lists `concurrency_design.md` and `sequence_diagram.md`; this row added to the log. |
 | 2026-10-27 | "review this to ensure all is completed", + the Sprint 2 rubric file | Checked | Every rubric criterion was met on main. Claude noted that `concurrency_design.md` did not link to the diagram. |
 | 2026-10-27 | "add a link to the sequence diagram at the top of the concurrency design file" | PR #20 | Link added under the author line. |
+
+### Sprint 3 implementation session (2026-11-16 to 2026-11-17)
+
+Summary of the prompts I gave Claude while writing the Sprint 3 code, and what I did with the
+output. Quoted prompts are my words; the notes describe the outcome.
+
+| Date | Prompt | Result | Notes |
+|---|---|---|---|
+| 2026-11-16 | "can you read this", + the Sprint 3 assignment page | Breakdown only | Claude listed the deliverables (`client.py`, `server.py`, execution log), the real due date, and how the 100 rubric points split across CLI parsing, DNS handling, framing, concurrency/FSM and code quality. |
+| 2026-11-16 | "start implementation. refer to design specs in the repo made in the last two sprints. ask clarification before making design changes or choices." | Questions first | Before writing the client, Claude listed 5 places where the specs were silent or conflicted with the assignment (port flag, client input loop, player name entry, question bank, PR split). It then drafted `protocol.py` and `server.py`, which the specs fully define, and tested a full game with raw sockets. |
+| 2026-11-16 | "1. make -p required and check its a valid port. 2. use the same selectors, it will only run on linux and mac 3. prompt the player for the name after connecting, and retry if INVALID_NAME 4. write some example questions as you recommended for now, I may or may not change them later. 5. use recommendation." | Accepted | `-p` is required on both programs and must be 1024 to 65535. The client uses one `selectors` loop over the socket and stdin (no threads, so not Windows). The name is checked by the server, and the client asks again on `INVALID_NAME`. `questions.json` holds 10 networking questions. Two smaller gaps keep placeholders for now: a repeated `CONNECT` from a joined player gets `OUT_OF_TURN`, and a server Ctrl+C closes the sockets without `GAME_OVER` (no defined `reason` fits). |
+| 2026-11-16 | Review of the finished code | Checked | 18 spec-derived tests pass, `pycodestyle` reports no PEP 8 issues, and a scripted two-client game on localhost was captured as `docs/sprint3_execution_log.md`. |
+| 2026-11-17 | "all the folders are in place, can you run the tests from here" | Passed | All 18 tests pass on my Mac (Python 3.14) in my local copy of the repo. |
+| 2026-11-17 | "check this can run while configured on a cml alpine linux setup" | Passed | The tests pass on Alpine Linux with Python 3.8 and 3.12, and a full game ran across three separate Alpine hosts, with the clients finding the server by DNS name (`-i server.arthur.edu`). Open risk: the offline CML Alpine nodes need `python3` installed. |
+| 2026-11-17 | "great, update the docs, include an explicit \"how to\" with the commands entered. make it exceptionally clear so even a non-technical person could start the trivia game." | Docs updated | README has a step-by-step "How to Play" with every command, the expected output and a troubleshooting table. SOW section 4 is filled in, and this log is updated. |
+| 2026-11-17 | "be sure to add this to the ai prompts and the message before" (replying to my answer "make -p required and check its a valid port.") | Logged | The clarification table below was added. `tests/test_cli.py` was also added: 4 tests that check both programs reject a missing, out-of-range or non-numeric `-p`, bringing the total to 22. |
+
+**Sprint 3 clarification questions.** Claude asked these before writing `client.py`, as the base
+prompt requires ("If something you need is not specified, STOP and ask"). The questions are
+Claude's, paraphrased. The answers are my words from the reply above.
+
+| # | Gap Claude found in the specs (paraphrased) | Claude's recommendation | My answer (verbatim) |
+|---|---|---|---|
+| 1 | The specs fix port 5457, but the assignment requires a `-p` flag on both programs. | Make `-p` required, check it is 1024 to 65535, use 5457 in examples. | "make -p required and check its a valid port." |
+| 2 | The specs do not say how the client reads the keyboard while still listening to the server (for example a `STATE_UPDATE` after a 15 s timeout). | The same `selectors` loop over the socket and stdin; works on Linux and macOS but not Windows. | "use the same selectors, it will only run on linux and mac" |
+| 3 | The assignment lists only `-h -i -p`, so where does the player name come from? | Prompt after connecting; ask again on `INVALID_NAME`. | "prompt the player for the name after connecting, and retry if INVALID_NAME" |
+| 4 | The specs say "3 rounds x 3 questions + 1 tiebreaker" but give no questions or file format. | Claude writes 10 networking questions in a simple JSON layout for review. | "write some example questions as you recommended for now, I may or may not change them later." |
+| 5 | How to split the work into issues and PRs, and who produces the execution log. | One issue/PR for the code and tests, one for the docs and execution log; Claude runs two clients on localhost for the log. | "use recommendation." |
+| 6 | No error code covers a joined player sending `CONNECT` again. | Placeholder: `OUT_OF_TURN`, message ignored. | Not answered yet; placeholder kept. |
+| 7 | The concurrency design says to send `GAME_OVER` on server Ctrl+C, but no `reason` value fits. | Placeholder: close both sockets; clients print "Lost connection to server". | Not answered yet; placeholder kept. |

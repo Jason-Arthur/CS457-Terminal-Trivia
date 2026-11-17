@@ -1,0 +1,42 @@
+{
+  "rounds": [
+    [
+      {"text": "Which layer of the OSI model does TCP operate at?",
+       "choices": {"A": "Network", "B": "Transport", "C": "Session", "D": "Data Link"},
+       "answer": "B"},
+      {"text": "Which port does HTTPS use by default?",
+       "choices": {"A": "80", "B": "22", "C": "443", "D": "8080"},
+       "answer": "C"},
+      {"text": "How many bits are in an IPv4 address?",
+       "choices": {"A": "32", "B": "48", "C": "64", "D": "128"},
+       "answer": "A"}
+    ],
+    [
+      {"text": "Which protocol translates hostnames into IP addresses?",
+       "choices": {"A": "DHCP", "B": "ARP", "C": "DNS", "D": "ICMP"},
+       "answer": "C"},
+      {"text": "What does the TCP three-way handshake start with?",
+       "choices": {"A": "ACK", "B": "SYN", "C": "FIN", "D": "RST"},
+       "answer": "B"},
+      {"text": "How many usable host addresses does a /24 subnet have?",
+       "choices": {"A": "256", "B": "255", "C": "254", "D": "252"},
+       "answer": "C"}
+    ],
+    [
+      {"text": "Which protocol maps an IPv4 address to a MAC address on a LAN?",
+       "choices": {"A": "ARP", "B": "NAT", "C": "RIP", "D": "DNS"},
+       "answer": "A"},
+      {"text": "Which TCP flag closes a connection gracefully?",
+       "choices": {"A": "URG", "B": "PSH", "C": "RST", "D": "FIN"},
+       "answer": "D"},
+      {"text": "Which DHCP message does a client broadcast first?",
+       "choices": {"A": "OFFER", "B": "REQUEST", "C": "DISCOVER", "D": "ACK"},
+       "answer": "C"}
+    ]
+  ],
+  "tiebreaker": {
+    "text": "What is the size of a minimum TCP header without options, in bytes?",
+    "choices": {"A": "8", "B": "16", "C": "20", "D": "40"},
+    "answer": "C"
+  }
+}
