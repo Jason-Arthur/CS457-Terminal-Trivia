@@ -202,10 +202,12 @@ output. Quoted prompts are my words; the notes describe the outcome.
 | 2026-11-17 | "check this can run while configured on a cml alpine linux setup" | Passed | The tests pass on Alpine Linux with Python 3.8 and 3.12, and a full game ran across three separate Alpine hosts, with the clients finding the server by DNS name (`-i server.arthur.edu`). Open risk: the offline CML Alpine nodes need `python3` installed. |
 | 2026-11-17 | "great, update the docs, include an explicit \"how to\" with the commands entered. make it exceptionally clear so even a non-technical person could start the trivia game." | Docs updated | README has a step-by-step "How to Play" with every command, the expected output and a troubleshooting table. SOW section 4 is filled in, and this log is updated. |
 | 2026-11-17 | "be sure to add this to the ai prompts and the message before" (replying to my answer "make -p required and check its a valid port.") | Logged | The clarification table below was added. `tests/test_cli.py` was also added: 4 tests that check both programs reject a missing, out-of-range or non-numeric `-p`, bringing the total to 22. |
+| 2026-11-17 | "can we settle those now?" (about the two open placeholders) | Specs updated | Re-sent `CONNECT` stays `OUT_OF_TURN` and is now written into blueprint §3.10, FSM §3.2 and concurrency §2.4. Server Ctrl+C mid-game now sends `GAME_OVER` `DRAW` / `server_shutdown`; added to blueprint §3.12, the FSM diagram and §3.3, and concurrency §2.6 before the code changed. 2 new tests (24 total). |
 
 **Sprint 3 clarification questions.** Claude asked these before writing `client.py`, as the base
 prompt requires ("If something you need is not specified, STOP and ask"). The questions are
-Claude's, paraphrased. The answers are my words from the reply above.
+Claude's, paraphrased. Answers 1 to 5 are my words from the reply above; 6 and 7 are the options
+I picked on decision cards.
 
 | # | Gap Claude found in the specs (paraphrased) | Claude's recommendation | My answer (verbatim) |
 |---|---|---|---|
@@ -214,5 +216,5 @@ Claude's, paraphrased. The answers are my words from the reply above.
 | 3 | The assignment lists only `-h -i -p`, so where does the player name come from? | Prompt after connecting; ask again on `INVALID_NAME`. | "prompt the player for the name after connecting, and retry if INVALID_NAME" |
 | 4 | The specs say "3 rounds x 3 questions + 1 tiebreaker" but give no questions or file format. | Claude writes 10 networking questions in a simple JSON layout for review. | "write some example questions as you recommended for now, I may or may not change them later." |
 | 5 | How to split the work into issues and PRs, and who produces the execution log. | One issue/PR for the code and tests, one for the docs and execution log; Claude runs two clients on localhost for the log. | "use recommendation." |
-| 6 | No error code covers a joined player sending `CONNECT` again. | Placeholder: `OUT_OF_TURN`, message ignored. | Not answered yet; placeholder kept. |
-| 7 | The concurrency design says to send `GAME_OVER` on server Ctrl+C, but no `reason` value fits. | Placeholder: close both sockets; clients print "Lost connection to server". | Not answered yet; placeholder kept. |
+| 6 | No error code covers a joined player sending `CONNECT` again. | Placeholder: `OUT_OF_TURN`, message ignored. | Picked on a decision card (2026-11-17): "Keep OUT_OF_TURN, document it". |
+| 7 | The concurrency design says to send `GAME_OVER` on server Ctrl+C, but no `reason` value fits. | Send `GAME_OVER` with a new `reason`, `server_shutdown` (`DRAW`, no winner). | Picked on a decision card (2026-11-17): "GAME_OVER with reason server_shutdown". |

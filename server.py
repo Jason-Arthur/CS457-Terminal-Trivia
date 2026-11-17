@@ -644,8 +644,21 @@ class TriviaServer:
         log.info("State -> %s", self.room.state)
 
     def shutdown(self):
-        """Ctrl+C: close every socket and the selector (concurrency §2.6)."""
+        """Ctrl+C: GAME_OVER if in a game, then close (concurrency §2.6).
+
+        A running game ends as DRAW / server_shutdown (blueprint §3.12,
+        fsm_specification.md §3.3). One send() per connection is the
+        "last flush attempt"; anything left unsent is dropped.
+        """
         log.info("Shutting down")
+        if self.room.state in IN_GAME_STATES:
+            self.end_game("DRAW", None, "server_shutdown")
+        for conn in list(self.conns):
+            if conn.outbuf:
+                try:
+                    conn.sock.send(conn.outbuf)
+                except (BlockingIOError,) + PEER_GONE:
+                    pass
         for conn in list(self.conns):
             self.close_connection(conn)
         if self.listen_sock is not None:

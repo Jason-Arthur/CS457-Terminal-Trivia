@@ -364,6 +364,7 @@ class TriviaClient:
             "tied_after_tiebreaker": "still tied after the tiebreaker",
             "opponent_quit": "opponent quit",
             "opponent_disconnected": "opponent disconnected",
+            "server_shutdown": "the server was shut down",
         }
         why = reasons.get(payload["reason"], payload["reason"])
         if payload["result"] == "DRAW":
