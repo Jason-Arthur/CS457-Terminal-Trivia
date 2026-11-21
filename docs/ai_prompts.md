@@ -42,6 +42,11 @@ tests in `tests/` from the three spec documents. Where the specs did not decide 
 asked first, and I made each of those design choices (listed in the Sprint 3 log below). I
 reviewed the code and test results before it was pushed.
 
+In Sprint 4 Claude drafted the `JA-R1` configuration file (`cml/r1_config.txt`), the CML runbook
+(`docs/sprint4_runbook.md`), the network report template and the rewrite of SOW section 5, all
+from the commands given in the Sprint 4 assignment. I build the lab in CML myself, and the
+topology export, the packet capture and every CLI output in the report come from my lab.
+
 ---
 
 ## 2. Constraint Strategy
@@ -218,3 +223,14 @@ I picked on decision cards.
 | 5 | How to split the work into issues and PRs, and who produces the execution log. | One issue/PR for the code and tests, one for the docs and execution log; Claude runs two clients on localhost for the log. | "use recommendation." |
 | 6 | No error code covers a joined player sending `CONNECT` again. | Placeholder: `OUT_OF_TURN`, message ignored. | Picked on a decision card (2026-11-17): "Keep OUT_OF_TURN, document it". |
 | 7 | The concurrency design says to send `GAME_OVER` on server Ctrl+C, but no `reason` value fits. | Send `GAME_OVER` with a new `reason`, `server_shutdown` (`DRAW`, no winner). | Picked on a decision card (2026-11-17): "GAME_OVER with reason server_shutdown". |
+
+### Sprint 4 deployment prep session (2026-11-21)
+
+Summary of the prompts I gave Claude while preparing the Sprint 4 CML deployment, and what I did
+with the output. Quoted prompts are my words; the notes describe the outcome.
+
+| Date | Prompt | Result | Notes |
+|---|---|---|---|
+| 2026-11-21 | "create a sprint 4 thread" | Breakdown only | No Sprint 4 issues existed yet, so Claude summarized the old two-router plan in SOW section 5 and asked for the Sprint 4 assignment and rubric before building anything. |
+| 2026-11-21 | The Sprint 4 assignment page and rubric, pasted | Plan proposed | Claude split the work: it drafts the router config, runbook, report template and docs, and I build the lab and produce the YAML export, the DNS capture and the CLI outputs. It noted that the single-router design replaces the two-router plan in the SOW. |
+| 2026-11-21 | "Ignore the posted due date, it is incorrect. Use initials \"JA\". keep prep as a separate PR, deliverables will come after." | PR (prep) | Nodes are named `JA-Client1`, `JA-Client2`, `JA-Server` and `JA-R1`, and the router hostname is `JA-R1`. Issue #26 covers the prep files; the lab deliverables come in a later PR. |

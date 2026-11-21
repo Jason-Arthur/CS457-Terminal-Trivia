@@ -113,18 +113,29 @@ On the wire this is sent as a single line terminated by `\n`:
 
 > For now you can use the topology below. We may update this when we get to defining subnets.
 
+Sprint 4 uses a **single Cisco IOSv router (`JA-R1`)** that connects all three subnets directly, so
+no backbone link or static routes are needed. This replaces the earlier two-router plan. The
+step-by-step build is in [`docs/sprint4_runbook.md`](docs/sprint4_runbook.md), the paste-ready
+router configuration is [`cml/r1_config.txt`](cml/r1_config.txt), and the evidence is in
+[`sprint_4_network_report.md`](sprint_4_network_report.md).
+
 ### 5.1 Subnet & Router Design
-- **Subnet A (Client 1):** `192.168.10.0/24` (Interface `Gi0/1` on Router R1)
-- **Subnet B (Client 2):** `192.168.11.0/24` (Interface `Gi0/2` on Router R1)
-- **Subnet C (Game Server):** `192.168.20.0/24` (Interface `Gi0/1` on Router R2)
-- **Router Backbone:** `10.0.0.0/30` (Interface `Gi0/0` on R1 <-> `Gi0/0` on R2)
+- **Subnet A (Client 1, `JA-Client1`):** `192.168.10.0/24`, gateway `192.168.10.1` on `JA-R1` `Gi0/1`
+- **Subnet B (Client 2, `JA-Client2`):** `192.168.11.0/24`, gateway `192.168.11.1` on `JA-R1` `Gi0/2`
+- **Subnet C (Game Server, `JA-Server`):** `192.168.20.0/24`, gateway `192.168.20.1` on `JA-R1` `Gi0/3`. The server has the static address `192.168.20.100/24` with `default via 192.168.20.1`.
+- **Routing:** `ip routing` on `JA-R1`. All three subnets are connected (`C`) routes.
+- **Internet access:** `JA-R1` `Gi0/0` gets its address by DHCP from a CML External Connector (NAT mode). NAT overload (`access-list 1` for all three subnets, `ip nat inside source list 1 interface GigabitEthernet0/0 overload`) lets the nodes install packages and clone the repository.
 
 ### 5.2 DHCP Pools & DNS Configuration Plan
-- **Router R1 DHCP Pool 1 (`CLIENT1_POOL`):** Leases `192.168.10.10` - `192.168.10.50`, gateway `192.168.10.1`, DNS `10.0.0.2`.
-- **Router R1 DHCP Pool 2 (`CLIENT2_POOL`):** Leases `192.168.11.10` - `192.168.11.50`, gateway `192.168.11.1`, DNS `10.0.0.2`.
-- **Router R2 Authoritative DNS:** Configured with `ip dns server` and static host mapping `server.[yourlastname].edu` -> `192.168.20.100`.
+- **`CLIENT1_POOL`:** `network 192.168.10.0 255.255.255.0`, `default-router 192.168.10.1`, `dns-server 192.168.10.1`
+- **`CLIENT2_POOL`:** `network 192.168.11.0 255.255.255.0`, `default-router 192.168.11.1`, `dns-server 192.168.11.1`
+- **Exclusions:** `ip dhcp excluded-address 192.168.10.1` and `192.168.11.1`, so R1 never leases its own gateway address.
+- **Clients:** Alpine nodes request a lease with `udhcpc -i eth0`.
+- **Authoritative DNS on `JA-R1`:** `ip domain lookup`, `ip dns server` and `ip host server.arthur.edu 192.168.20.100`. Other names are forwarded to the External Connector's DNS server learned on `Gi0/0` (no `ip name-server 8.8.8.8`, because external UDP/53 is blocked on the CSU network).
 
 ### 5.3 Deployment Strategy & Wireshark Trace Capture
-- **CML Deployment Strategy:** Deploy `server.py` onto Subnet C node (`192.168.20.100`) behind Router R2, and `client.py` onto Subnet A and Subnet B nodes behind Router R1.
-- **Cisco Infrastructure Configuration:** Router R1 DHCP pools (`CLIENT1_POOL`, `CLIENT2_POOL`) and Router R2 authoritative DNS (`ip host server.[lastname].edu 192.168.20.100`).
-- **Wireshark Trace Capture Plan:** Capture DHCP DORA exchange (`dhcp_negotiation.pcap`) and DNS query/response resolution (`dns_lookup.pcap`).
+- **CML Deployment Strategy:** `server.py` runs on `JA-Server` (`192.168.20.100`) and `client.py` runs on `JA-Client1` and `JA-Client2` with `-i server.arthur.edu -p 5457`. Python 3 and git are installed on the Alpine nodes with `apk add python3 git` through the NAT uplink.
+- **Cisco Infrastructure Configuration:** one router, `JA-R1`, provides the three gateways, both DHCP pools, the DNS record and NAT ([`cml/r1_config.txt`](cml/r1_config.txt)).
+- **Verification:** `show ip interface brief`, `show ip route` and `show ip dhcp binding` on `JA-R1`; `ping -4 192.168.20.100` and `nslookup -type=A server.arthur.edu` from both clients.
+- **Wireshark Trace Capture Plan (Sprint 4):** capture on the `JA-Client1` <-> `JA-R1` link during `nslookup -type=A server.arthur.edu` and save it as `sprint_4_dns_lookup.pcap`. It shows the DNS Standard Query to `192.168.10.1` on UDP 53 and the response returning `192.168.20.100`. The DHCP capture was removed from the Sprint 4 requirements.
+- **Deliverables:** `sprint_4_topology.yaml` (CML export), `sprint_4_dns_lookup.pcap` and `sprint_4_network_report.md`, all in the repository root.
