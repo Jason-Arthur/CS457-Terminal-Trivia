@@ -1,0 +1,88 @@
+! =====================================================================
+! JA-R1 configuration: Terminal Trivia network (one router, three subnets)
+! Paste into the JA-R1 console in CML, starting at the Router> prompt.
+!
+!   Gi0/0  DHCP from the CML External Connector (NAT outside)
+!   Gi0/1  192.168.10.1/24  Subnet A, JA-Client1 (DHCP CLIENT1_POOL)
+!   Gi0/2  192.168.11.1/24  Subnet B, JA-Client2 (DHCP CLIENT2_POOL)
+!   Gi0/3  192.168.20.1/24  Subnet C, JA-Server  (static 192.168.20.100)
+!
+! DNS: R1 answers server.arthur.edu -> 192.168.20.100 and forwards other
+! names to the External Connector's DNS (learned on Gi0/0 by DHCP).
+! =====================================================================
+enable
+configure terminal
+hostname JA-R1
+
+! --- 1. Routing and the three LAN gateways --------------------------
+ip routing
+
+interface GigabitEthernet0/1
+ description Subnet A gateway (JA-Client1)
+ ip address 192.168.10.1 255.255.255.0
+ no shutdown
+ exit
+
+interface GigabitEthernet0/2
+ description Subnet B gateway (JA-Client2)
+ ip address 192.168.11.1 255.255.255.0
+ no shutdown
+ exit
+
+interface GigabitEthernet0/3
+ description Subnet C gateway (JA-Server)
+ ip address 192.168.20.1 255.255.255.0
+ no shutdown
+ exit
+
+! --- 2. DHCP pools for the two client subnets -----------------------
+ip dhcp excluded-address 192.168.10.1
+ip dhcp excluded-address 192.168.11.1
+
+ip dhcp pool CLIENT1_POOL
+ network 192.168.10.0 255.255.255.0
+ default-router 192.168.10.1
+ dns-server 192.168.10.1
+ exit
+
+ip dhcp pool CLIENT2_POOL
+ network 192.168.11.0 255.255.255.0
+ default-router 192.168.11.1
+ dns-server 192.168.11.1
+ exit
+
+! --- 3. Authoritative DNS for the game server -----------------------
+ip domain lookup
+ip dns server
+ip host server.arthur.edu 192.168.20.100
+
+! --- 4. External Connector uplink and NAT overload ------------------
+! Do not add "ip name-server 8.8.8.8": external UDP/53 is blocked on
+! the CSU network. The upstream DNS server comes from Gi0/0's lease.
+interface GigabitEthernet0/0
+ description Uplink to CML External Connector (NAT)
+ ip address dhcp
+ ip nat outside
+ no shutdown
+ exit
+
+interface GigabitEthernet0/1
+ ip nat inside
+ exit
+
+interface GigabitEthernet0/2
+ ip nat inside
+ exit
+
+interface GigabitEthernet0/3
+ ip nat inside
+ exit
+
+access-list 1 permit 192.168.10.0 0.0.0.255
+access-list 1 permit 192.168.11.0 0.0.0.255
+access-list 1 permit 192.168.20.0 0.0.0.255
+ip nat inside source list 1 interface GigabitEthernet0/0 overload
+
+! --- 5. Save to NVRAM ------------------------------------------------
+end
+write memory

@@ -4,7 +4,7 @@
 **Course:** CS 457 Computer Networks, Fall 2026
 
 A two-player, terminal-based trivia game played over TCP. The game server and the two clients run
-on separate subnets of a multi-router network built in Cisco Modeling Labs (CML).
+on separate subnets of a network built in Cisco Modeling Labs (CML), joined by one Cisco router.
 
 ---
 
@@ -39,6 +39,8 @@ on separate subnets of a multi-router network built in Cisco Modeling Labs (CML)
 | [`questions.json`](questions.json) | The question bank: 3 rounds of 3 questions plus 1 tiebreaker. |
 | [`tests/`](tests/) | Automated tests built from the protocol and FSM specs, plus command-line checks (24 tests). |
 | [`docs/sprint3_execution_log.md`](docs/sprint3_execution_log.md) | Console log of a full two-player game on localhost (Sprint 3). |
+| [`cml/r1_config.txt`](cml/r1_config.txt) | Paste-ready configuration for router `JA-R1`: gateways, DHCP pools, DNS record and NAT. |
+| [`sprint_4_network_report.md`](sprint_4_network_report.md) | Sprint 4 network verification report (router and client outputs, DNS capture). |
 
 ---
 
@@ -214,8 +216,10 @@ the name after `-i`:
 
 1. Copy `server.py`, `client.py`, `protocol.py` and `questions.json` (keep them together in one
    folder) onto the server computer and each player computer. Each computer needs Python 3
-   (Step 2). On CML Alpine nodes, check with `python3 --version`. The nodes are offline, so if Python
-   is missing it must be added with `apk add python3` while the node has an internet connection.
+   (Step 2). On CML Alpine nodes, check with `python3 --version`. If Python is missing, install it with
+   `sudo apk add python3`. This works because router `JA-R1` gives the nodes internet access
+   through the CML External Connector. `sudo apk add git` followed by
+   `git clone https://github.com/Jason-Arthur/CS457-Terminal-Trivia.git` copies the whole project.
 2. On the server computer: `python3 server.py -p 5457`
 3. On each player computer, use the server's name instead of `localhost`:
 
@@ -255,16 +259,21 @@ message framing examples from the protocol blueprint, every error code, and full
 
 ---
 
-## Planned Network Topology (CML)
+## Network Topology (CML)
 
-| Segment | Network | Host |
-|---|---|---|
-| Subnet A | `192.168.10.0/24` behind Router R1 | Client 1 (DHCP) |
-| Subnet B | `192.168.11.0/24` behind Router R1 | Client 2 (DHCP) |
-| Subnet C | `192.168.20.0/24` behind Router R2 | Game server `192.168.20.100` (`server.arthur.edu`) |
-| Backbone | `10.0.0.0/30` | R1 <-> R2 |
+One Cisco IOSv router, `JA-R1`, connects all three subnets directly.
 
-See section 5 of the [SOW](sow_template.md) for the DHCP, DNS and Wireshark plans.
+| Segment | Network | Router interface | Host |
+|---|---|---|---|
+| Subnet A | `192.168.10.0/24` | `Gi0/1` `192.168.10.1` | `JA-Client1` (DHCP, `CLIENT1_POOL`) |
+| Subnet B | `192.168.11.0/24` | `Gi0/2` `192.168.11.1` | `JA-Client2` (DHCP, `CLIENT2_POOL`) |
+| Subnet C | `192.168.20.0/24` | `Gi0/3` `192.168.20.1` | `JA-Server` `192.168.20.100` (`server.arthur.edu`) |
+| Uplink | DHCP from CML | `Gi0/0` (NAT outside) | External Connector |
+
+`JA-R1` is also the DHCP server for both client subnets and the authoritative DNS server for
+`server.arthur.edu`. The router configuration is in
+[`cml/r1_config.txt`](cml/r1_config.txt), and section 5 of the [SOW](sow_template.md) has the
+full plan.
 
 ---
 
@@ -276,8 +285,9 @@ See section 5 of the [SOW](sow_template.md) for the DHCP, DNS and Wireshark plan
 | 1 | Application protocol and FSM design | Done |
 | 2 | Server concurrency and state synchronization design | Done |
 | 3 | Implementation (`protocol.py`, `server.py`, `client.py`) | Done |
-| 4–5 | CML topology deployment and Wireshark captures | Not started |
+| 4 | CML 1-router topology, DHCP, DNS and DNS capture | In progress |
+| 5 | To be announced | Not started |
 
-The server and client are written in Python 3 using only the standard library, so they run on the
-offline CML nodes with nothing extra to install. See [How to Play](#how-to-play-step-by-step) to
+The server and client are written in Python 3 using only the standard library, so the CML nodes need
+nothing beyond `python3` to run them. See [How to Play](#how-to-play-step-by-step) to
 run them.
