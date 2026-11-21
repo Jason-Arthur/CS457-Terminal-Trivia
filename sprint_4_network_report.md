@@ -44,7 +44,9 @@ in `sprint_4_topology.yaml`.
 TODO: paste output
 ```
 
-All four interfaces are `up`/`up` with the addresses in the table above.
+All four interfaces are `up`/`up` with the addresses in the table above. `NVI0` is the NAT
+Virtual Interface that IOS creates automatically once `ip nat inside`/`outside` is configured.
+It is not a cabled port.
 
 ### 2.2 `show ip route` on JA-R1
 
@@ -53,7 +55,9 @@ TODO: paste output
 ```
 
 `192.168.10.0/24`, `192.168.11.0/24` and `192.168.20.0/24` appear as `C` (connected) routes on
-Gi0/1, Gi0/2 and Gi0/3. The default route via Gi0/0 comes from the External Connector's DHCP lease.
+Gi0/1, Gi0/2 and Gi0/3. The default route (`S* 0.0.0.0/0 [254/0]`) is installed by the
+Gi0/0 DHCP lease from the External Connector. IOS adds it as a static route with administrative
+distance 254, so it is used only for traffic leaving the lab.
 
 ### 2.3 Game server static address (`JA-Server`)
 
