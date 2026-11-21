@@ -1,5 +1,5 @@
 ! =====================================================================
-! JA-R1 configuration: CS 457 Sprint 4 (single-router, three subnets)
+! JA-R1 configuration: Terminal Trivia network (one router, three subnets)
 ! Paste into the JA-R1 console in CML, starting at the Router> prompt.
 !
 !   Gi0/0  DHCP from the CML External Connector (NAT outside)
@@ -14,7 +14,7 @@ enable
 configure terminal
 hostname JA-R1
 
-! --- 1. Routing and the three LAN gateways (assignment 2.1) ----------
+! --- 1. Routing and the three LAN gateways --------------------------
 ip routing
 
 interface GigabitEthernet0/1
@@ -35,7 +35,7 @@ interface GigabitEthernet0/3
  no shutdown
  exit
 
-! --- 2. DHCP pools for the two client subnets (assignment 2.3) -------
+! --- 2. DHCP pools for the two client subnets -----------------------
 ip dhcp excluded-address 192.168.10.1
 ip dhcp excluded-address 192.168.11.1
 
@@ -51,12 +51,12 @@ ip dhcp pool CLIENT2_POOL
  dns-server 192.168.11.1
  exit
 
-! --- 3. Authoritative DNS for the game server (assignment 2.4) -------
+! --- 3. Authoritative DNS for the game server -----------------------
 ip domain lookup
 ip dns server
 ip host server.arthur.edu 192.168.20.100
 
-! --- 4. External Connector uplink and NAT overload (assignment 2.5) --
+! --- 4. External Connector uplink and NAT overload ------------------
 ! Do not add "ip name-server 8.8.8.8": external UDP/53 is blocked on
 ! the CSU network. The upstream DNS server comes from Gi0/0's lease.
 interface GigabitEthernet0/0

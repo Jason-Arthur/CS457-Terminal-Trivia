@@ -42,9 +42,9 @@ tests in `tests/` from the three spec documents. Where the specs did not decide 
 asked first, and I made each of those design choices (listed in the Sprint 3 log below). I
 reviewed the code and test results before it was pushed.
 
-In Sprint 4 Claude drafted the `JA-R1` configuration file (`cml/r1_config.txt`), the CML runbook
-(`docs/sprint4_runbook.md`), the network report template and the rewrite of SOW section 5, all
-from the commands given in the Sprint 4 assignment. I build the lab in CML myself, and the
+In Sprint 4 Claude drafted the `JA-R1` configuration file (`cml/r1_config.txt`), the network report
+template and the rewrite of SOW section 5, all from the commands given in the Sprint 4
+assignment. I build the lab in CML myself, and the
 topology export, the packet capture and every CLI output in the report come from my lab.
 
 ---
@@ -232,5 +232,7 @@ with the output. Quoted prompts are my words; the notes describe the outcome.
 | Date | Prompt | Result | Notes |
 |---|---|---|---|
 | 2026-11-21 | "create a sprint 4 thread" | Breakdown only | No Sprint 4 issues existed yet, so Claude summarized the old two-router plan in SOW section 5 and asked for the Sprint 4 assignment and rubric before building anything. |
-| 2026-11-21 | The Sprint 4 assignment page and rubric, pasted | Plan proposed | Claude split the work: it drafts the router config, runbook, report template and docs, and I build the lab and produce the YAML export, the DNS capture and the CLI outputs. It noted that the single-router design replaces the two-router plan in the SOW. |
+| 2026-11-21 | The Sprint 4 assignment page and rubric, pasted | Plan proposed | Claude split the work: it drafts the router config, a step-by-step CML runbook, the report template and docs, and I build the lab and produce the YAML export, the DNS capture and the CLI outputs. It noted that the single-router design replaces the two-router plan in the SOW. |
 | 2026-11-21 | "Ignore the posted due date, it is incorrect. Use initials \"JA\". keep prep as a separate PR, deliverables will come after." | PR (prep) | Nodes are named `JA-Client1`, `JA-Client2`, `JA-Server` and `JA-R1`, and the router hostname is `JA-R1`. Issue #26 covers the prep files; the lab deliverables come in a later PR. |
+| 2026-11-21 | "remove all of the \"save for the report\" comments in the runbook, anything related to the assignment deliverables should be removed, it should appear as if a personal project not linked to any assignment unless explicitly required." | Superseded | See the next row. |
+| 2026-11-21 | "wait, remove the runbook entirely." | PR #27 updated | The runbook was deleted and its links removed from the README and SOW. The section labels that pointed at assignment sections were also removed from `cml/r1_config.txt`. |

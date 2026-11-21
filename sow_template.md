@@ -115,8 +115,7 @@ On the wire this is sent as a single line terminated by `\n`:
 
 Sprint 4 uses a **single Cisco IOSv router (`JA-R1`)** that connects all three subnets directly, so
 no backbone link or static routes are needed. This replaces the earlier two-router plan. The
-step-by-step build is in [`docs/sprint4_runbook.md`](docs/sprint4_runbook.md), the paste-ready
-router configuration is [`cml/r1_config.txt`](cml/r1_config.txt), and the evidence is in
+paste-ready router configuration is [`cml/r1_config.txt`](cml/r1_config.txt), and the evidence is in
 [`sprint_4_network_report.md`](sprint_4_network_report.md).
 
 ### 5.1 Subnet & Router Design

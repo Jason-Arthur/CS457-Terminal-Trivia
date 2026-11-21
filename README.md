@@ -39,7 +39,6 @@ on separate subnets of a network built in Cisco Modeling Labs (CML), joined by o
 | [`questions.json`](questions.json) | The question bank: 3 rounds of 3 questions plus 1 tiebreaker. |
 | [`tests/`](tests/) | Automated tests built from the protocol and FSM specs, plus command-line checks (24 tests). |
 | [`docs/sprint3_execution_log.md`](docs/sprint3_execution_log.md) | Console log of a full two-player game on localhost (Sprint 3). |
-| [`docs/sprint4_runbook.md`](docs/sprint4_runbook.md) | Step-by-step CML build for Sprint 4: nodes, cabling, console commands, DNS capture and YAML export. |
 | [`cml/r1_config.txt`](cml/r1_config.txt) | Paste-ready configuration for router `JA-R1`: gateways, DHCP pools, DNS record and NAT. |
 | [`sprint_4_network_report.md`](sprint_4_network_report.md) | Sprint 4 network verification report (router and client outputs, DNS capture). |
 
@@ -219,8 +218,8 @@ the name after `-i`:
    folder) onto the server computer and each player computer. Each computer needs Python 3
    (Step 2). On CML Alpine nodes, check with `python3 --version`. If Python is missing, install it with
    `sudo apk add python3`. This works because router `JA-R1` gives the nodes internet access
-   through the CML External Connector (see the [Sprint 4 runbook](docs/sprint4_runbook.md#8-optional-play-the-game-across-the-subnets),
-   which also shows how to clone the repository with `git`).
+   through the CML External Connector. `sudo apk add git` followed by
+   `git clone https://github.com/Jason-Arthur/CS457-Terminal-Trivia.git` copies the whole project.
 2. On the server computer: `python3 server.py -p 5457`
 3. On each player computer, use the server's name instead of `localhost`:
 
@@ -272,8 +271,9 @@ One Cisco IOSv router, `JA-R1`, connects all three subnets directly.
 | Uplink | DHCP from CML | `Gi0/0` (NAT outside) | External Connector |
 
 `JA-R1` is also the DHCP server for both client subnets and the authoritative DNS server for
-`server.arthur.edu`. See section 5 of the [SOW](sow_template.md) and the
-[Sprint 4 runbook](docs/sprint4_runbook.md).
+`server.arthur.edu`. The router configuration is in
+[`cml/r1_config.txt`](cml/r1_config.txt), and section 5 of the [SOW](sow_template.md) has the
+full plan.
 
 ---
 

@@ -6,8 +6,8 @@
 **Lab files:** [`sprint_4_topology.yaml`](sprint_4_topology.yaml),
 [`sprint_4_dns_lookup.pcap`](sprint_4_dns_lookup.pcap)
 
-> **TEMPLATE.** Every `TODO` below is filled in from the CML lab by following
-> [`docs/sprint4_runbook.md`](docs/sprint4_runbook.md). Screenshots go in `docs/images/sprint4/`.
+> **TEMPLATE.** Every `TODO` below is filled in from the CML lab. Screenshots go in
+> `docs/images/sprint4/`.
 
 ---
 
