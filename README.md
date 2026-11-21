@@ -41,6 +41,8 @@ on separate subnets of a network built in Cisco Modeling Labs (CML), joined by o
 | [`docs/sprint3_execution_log.md`](docs/sprint3_execution_log.md) | Console log of a full two-player game on localhost (Sprint 3). |
 | [`cml/r1_config.txt`](cml/r1_config.txt) | Paste-ready configuration for router `JA-R1`: gateways, DHCP pools, DNS record and NAT. |
 | [`sprint_4_network_report.md`](sprint_4_network_report.md) | Sprint 4 network verification report (router and client outputs, DNS capture). |
+| [`sprint_4_topology.yaml`](sprint_4_topology.yaml) | CML lab export: the four nodes, the External Connector, their links and the router configuration. Import it into CML to rebuild the network. |
+| [`sprint_4_dns_lookup.pcap`](sprint_4_dns_lookup.pcap) | Packet capture of a client resolving `server.arthur.edu` through the router. |
 
 ---
 
@@ -285,7 +287,7 @@ full plan.
 | 1 | Application protocol and FSM design | Done |
 | 2 | Server concurrency and state synchronization design | Done |
 | 3 | Implementation (`protocol.py`, `server.py`, `client.py`) | Done |
-| 4 | CML 1-router topology, DHCP, DNS and DNS capture | In progress |
+| 4 | CML 1-router topology, DHCP, DNS and DNS capture | Done |
 | 5 | To be announced | Not started |
 
 The server and client are written in Python 3 using only the standard library, so the CML nodes need
